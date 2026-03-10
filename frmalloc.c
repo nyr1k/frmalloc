@@ -126,7 +126,7 @@ void heap_init() {
 
   free_list = (block_t *)(start);
   free_list->size = MMAP_INIT_SIZE;
-  SET_PREV_ALLOC(free_list); // does not coalesce the first block backwords
+  SET_PREV_ALLOC(free_list); // does not coalesce the first block backwards
 
   free_meta_t *meta = (free_meta_t*)((char *)start + HEADER_SIZE);
   meta->next = NULL;
