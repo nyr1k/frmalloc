@@ -15,8 +15,11 @@
 #include <stdio.h>
 
 /*
- *  size_t size - size of a block, where 2 lowest bits 
- *    are used as flags. 0x1 - allocated, 0x2 previous block is allocated
+ *  size_t size - size of a block
+ *  since the block size is always 16 byte aligned the first 4 bits are free
+ *  so 2 lowest bits are used as flags:
+ *    1 bit (0x01) - allocated 
+ *    2 bit (0x02) - previous allocated
  *  size_t padding - keeps the struct 16 byte aligned
  */
 typedef struct block {
@@ -37,10 +40,11 @@ typedef struct free_meta{
 #define HEADER_SIZE sizeof(block_t) 
 #define MMAP_INIT_SIZE 4*1024*1024 // mmap 4 MB
 #define ALIGN(size) ((size + 15) & ~15) // align the size to a multiple of 16
-#define MIN_FREE_BLOCK_SIZE ALIGN(HEADER_SIZE + 2*sizeof(void *) + sizeof(size_t)) /* minimum size of a free block consists of a header, 2 pointers: 
-                                                                                   *next and *prev for the free list, and a footer 
-                                                                                   that holds the size (size_t) of the block. 
-                                                                                   16 bytes aligned*/ 
+#define MIN_FREE_BLOCK_SIZE ALIGN(HEADER_SIZE + 2*sizeof(void *) + sizeof(size_t)) /* minimum size of a free block consists of:
+                                                                                      -header (16 bytes)
+                                                                                      -metadata (free_meta struct, 16 bytes) 
+                                                                                      -footer (holds size, 8 bytes)
+                                                                                         = 48 bytes (aligned) */ 
 /* Helper functions */ 
 #define GET_SIZE(block) ((block)->size & ~0xF)
 #define IS_ALLOC(block) ((block)->size & 0x1)
