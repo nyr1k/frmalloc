@@ -1,6 +1,6 @@
 # frmalloc
 
-A heap allocator implemented in C from scratch. Uses an explicit free list with boundary tags for O(1) coalescing.
+A heap allocator implemented in C from scratch. Uses an explicit free list with boundary tags for O(1) coalescing. Not thread-safe and no `realloc` yet, and limited to 4 MB. 
 
 ### Block layout
 
