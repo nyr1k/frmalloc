@@ -33,7 +33,7 @@ Allocated block:
 gcc test.c frmalloc.c
 `
 
-I think it will compile only on unix-like systems because there are no dependencies except for `mmap`
+I think it will compile only on unix-like systems because there is `mmap` dependency 
 
 ## Resources 
 To write this mini project I referenced the following resources: 
