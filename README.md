@@ -8,7 +8,7 @@ Every block has a 16-byte header storing its size and two flag bits
 
 Free blocks additionally store next/prev pointers in the payload area, and a footer which stores a copy of the size field at the end of the block. The footer allows `frfree` locate the previous block in O(1) without traversing the heap.
 
-Allocated blocks have no footer amd next/prev pointers. The payload area is entirely available to the user.
+Allocated blocks have no footer and next/prev pointers. The payload area is entirely available to the user.
 
 
 Free block:
