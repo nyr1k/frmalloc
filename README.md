@@ -10,13 +10,12 @@ Free blocks additionally store next/prev pointers in the payload area, and a foo
 
 Allocated blocks have no footer amd next/prev pointers. The payload area is entirely available to the user.
 
-```
+
 Free block:
-[ header (size + flags) | next ptr | prev ptr | ... | footer ]
+**[ header (size + flags) | next ptr | prev ptr | ... | footer ]**
 
 Allocated block:
-[ header (size + flags) | payload ...                        ]
-```
+**[ header (size + flags) | payload ...                        ]**
 
 ### Allocation
 
@@ -38,6 +37,6 @@ I think it will compile only on unix-like systems because there are no dependenc
 
 ## Resources 
 To write this mini project I referenced the following resources: 
--https://gee.cs.oswego.edu/dl/html/malloc.html
--https://sourceware.org/glibc/wiki/MallocInternals
--https://web.stanford.edu/class/archive/cs/cs107/cs107.1256/lectures/24/Lecture24.pdf
+- https://gee.cs.oswego.edu/dl/html/malloc.html
+- https://sourceware.org/glibc/wiki/MallocInternals
+- https://web.stanford.edu/class/archive/cs/cs107/cs107.1256/lectures/24/Lecture24.pdf
