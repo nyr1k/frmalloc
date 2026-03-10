@@ -29,10 +29,7 @@ Allocated block:
 - **Next block**: check if `IS_ALLOC(next)` is 0, merge if so
 - **Previous block**: check `IS_PREV_ALLOC` flag in the current header; if 0, use the footer to find and merge with it
 
-Coalescing is O(1)
-
-## Build and run
-
+## Build 
 `
 gcc test.c frmalloc.c
 ./frmalloc
