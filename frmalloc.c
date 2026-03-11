@@ -44,77 +44,107 @@ typedef struct free_meta{
                                                                                       -header (16 bytes)
                                                                                       -metadata (free_meta struct, 16 bytes) 
                                                                                       -footer (holds size, 8 bytes)
-                                                                                         = 48 bytes (aligned) */ 
-/* Helper functions */ 
-#define GET_SIZE(block) ((block)->size & ~0xF)
-#define IS_ALLOC(block) ((block)->size & 0x1)
-#define IS_PREV_ALLOC(block) ((block)->size & 0x2)
-#define SET_ALLOC(block) ((block)->size |= 0x1)
-#define SET_PREV_ALLOC(block) ((block)->size |= 0x2)
-#define SET_FREE(block) ((block)->size &= ~0x1)
-#define SET_PREV_FREE(block) ((block)->size &= ~0x2)
-#define GET_FOOTER(block) \
-  ((size_t *)((char *)(block) + GET_SIZE(block) - sizeof(size_t))) 
-#define GET_PREV_SIZE(block) \
-  ((*((size_t *)((char *)(block) - sizeof(size_t)))) & ~0xF) 
-#define GET_NEXT_BLOCK(block) \
-  ((block_t *)((char *)(block) + GET_SIZE(block)))
-#define GET_PREV_BLOCK(block) \
-  ((block_t*)((char *)(block) - GET_PREV_SIZE(block))) 
-#define GET_META(block) \
-  ((free_meta_t *)((block)+1))
-
+                                                                                         = 48 bytes (aligned) */    
 static block_t *free_list = NULL;
 static void *heap_start;
 static void *heap_end;
 static int is_heap_init = 0;
 
+/* Helper functions */
+static inline size_t get_size(block_t *block) {
+  return block->size & ~0xF;
+} 
+
+static inline size_t is_alloc(block_t *block) {
+  return block->size & 0x1; 
+}
+
+static inline size_t is_prev_alloc(block_t *block) {
+  return block->size & 0x2; 
+}
+
+static inline void set_alloc(block_t *block) {
+  block->size |= 0x1;
+}
+
+static inline void  set_prev_alloc(block_t *block) {
+  block->size |= 0x2;
+}
+
+static inline void set_free(block_t *block) {
+  block->size &= ~0x1;
+}
+
+static inline void set_prev_free(block_t *block) {
+  block->size &= ~0x2; 
+}
+
+static inline size_t *get_footer(block_t *block) {
+  return (size_t *)((char *)block + get_size(block) - sizeof(size_t));
+}
+
+static inline size_t get_prev_size(block_t *block) {
+  return *((size_t *)((char *)(block) - sizeof(size_t))) & ~0xF; 
+}
+
+static inline block_t *get_next_block(block_t *block) {
+  return (block_t *)((char *)(block) + get_size(block));
+}
+
+static inline block_t *get_prev_block(block_t *block) {
+  return (block_t*)((char *)(block) - get_prev_size(block)); 
+}
+
+static inline free_meta_t *get_meta(block_t *block) {
+  return (free_meta_t *)(block+1);
+}
+
 /* remove a free block from the free list */
-void remove_node(block_t *block) {
-  free_meta_t *meta = GET_META(block);
+static inline void remove_node(block_t *block) {
+  free_meta_t *meta = get_meta(block);
   if (meta->prev) {
-    GET_META(meta->prev)->next = meta->next;
+    get_meta(meta->prev)->next = meta->next;
   }
   else {
     free_list = meta->next;
   }
   if (meta->next) {
-    GET_META(meta->next)->prev = meta->prev;
+    get_meta(meta->next)->prev = meta->prev;
   }
 }
 
 /* replace old_block with new_free_block in the free list */
-void replace_node(block_t *new_free_block, block_t *old_block) {
-  free_meta_t *new_meta = GET_META(new_free_block);
-  free_meta_t *old_meta = GET_META(old_block);
+static inline void replace_node(block_t *new_free_block, block_t *old_block) {
+  free_meta_t *new_meta = get_meta(new_free_block);
+  free_meta_t *old_meta = get_meta(old_block);
  
   new_meta->next = old_meta->next;
   new_meta->prev = old_meta->prev;
  
   if (old_meta->prev) {
-    GET_META(old_meta->prev)->next = new_free_block;
+    get_meta(old_meta->prev)->next = new_free_block;
   } 
   else {
     free_list = new_free_block; // block was the head of the free_list
   }
   if (old_meta->next) {
-    GET_META(old_meta->next)->prev = new_free_block;
+    get_meta(old_meta->next)->prev = new_free_block;
   }
 }
 
 /* insert a block at the head of the free list */
-void insert_node(block_t *block) {
-  free_meta_t *block_meta= GET_META(block);
+static inline void insert_node(block_t *block) {
+  free_meta_t *block_meta= get_meta(block);
   block_meta->next = free_list;
   block_meta->prev = NULL;
   if (free_list) {
-    GET_META(free_list)->prev = block;
+    get_meta(free_list)->prev = block;
   }
   free_list = block;
 }
 
 /* Initialize heap */
-void heap_init() {
+static void heap_init() {
   void *start = mmap(NULL, MMAP_INIT_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   if (start== MAP_FAILED) {
     perror("mmap");
@@ -126,7 +156,7 @@ void heap_init() {
 
   free_list = (block_t *)(start);
   free_list->size = MMAP_INIT_SIZE;
-  SET_PREV_ALLOC(free_list); // does not coalesce the first block backwards
+  set_prev_alloc(free_list); // does not coalesce the first block backwards
 
   free_meta_t *meta = (free_meta_t*)((char *)start + HEADER_SIZE);
   meta->next = NULL;
@@ -135,12 +165,12 @@ void heap_init() {
   is_heap_init = 1;
 }
 
-void split(block_t *block, size_t size) {
+static void split(block_t *block, size_t size) {
   /* don't split if the resulting free block is less than the minimum free block size */
-  if (GET_SIZE(block) - size < MIN_FREE_BLOCK_SIZE) {
-    block_t *next_block = GET_NEXT_BLOCK(block);
+  if (get_size(block) - size < MIN_FREE_BLOCK_SIZE) {
+    block_t *next_block = get_next_block(block);
     if ((void *)next_block < heap_end) {
-      SET_PREV_ALLOC(next_block);
+      set_prev_alloc(next_block);
     }
     /* remove the block from the free_list */
     remove_node(block);
@@ -149,11 +179,11 @@ void split(block_t *block, size_t size) {
   
   /* split */
   block_t *new_free_block = (block_t *)((char *)block + size);
-  new_free_block->size = GET_SIZE(block) - size; 
+  new_free_block->size = get_size(block) - size; 
     
-  SET_PREV_ALLOC(new_free_block); // set previous allocated flag
+  set_prev_alloc(new_free_block); // set previous allocated flag
   
-  size_t *footer = GET_FOOTER(new_free_block);
+  size_t *footer = get_footer(new_free_block);
   *footer = new_free_block->size; 
   
   /* set new_free_block in the free_list */
@@ -179,13 +209,13 @@ void *frmalloc(size_t size) {
 /* traverse the free_list and look for a suitable block */
   block_t *current_free = free_list;
   while (current_free) {
-    if (GET_SIZE(current_free) >= size) {
+    if (get_size(current_free) >= size) {
       split(current_free, size);   
-      current_free->size = size | IS_PREV_ALLOC(current_free); 
-      SET_ALLOC(current_free); 
+      current_free->size = size | is_prev_alloc(current_free); 
+      set_alloc(current_free); 
       return (void *)(current_free+1);  
     } 
-    current_free = GET_META(current_free)->next; // go to the next block 
+    current_free = get_meta(current_free)->next; // go to the next block 
   }
 
   return NULL;
@@ -197,30 +227,30 @@ void frfree(void *pointer) {
   }
 
   block_t *block = (block_t *)pointer - 1; // get to the header   
-  SET_FREE(block); // set the allocated bit to 0
+  set_free(block); // set the allocated bit to 0
 
-  block_t *next_block = GET_NEXT_BLOCK(block);
+  block_t *next_block = get_next_block(block);
   /* make sure that it doesn't go outside of the heap */
-  if ((void *)next_block < heap_end && !IS_ALLOC(next_block)) {
-    block->size = (GET_SIZE(next_block) + GET_SIZE(block)) | IS_PREV_ALLOC(block);
+  if ((void *)next_block < heap_end && !is_alloc(next_block)) {
+    block->size = (get_size(next_block) + get_size(block)) | is_prev_alloc(block);
     remove_node(next_block);
   }
 
   /* coalesce with the previous block */
-  if (!IS_PREV_ALLOC(block)) {
-    block_t *prev_block = GET_PREV_BLOCK(block);
+  if (!is_prev_alloc(block)) {
+    block_t *prev_block = get_prev_block(block);
     remove_node(prev_block);
-    prev_block->size = (GET_SIZE(block) + GET_SIZE(prev_block)) | IS_PREV_ALLOC(prev_block); 
+    prev_block->size = (get_size(block) + get_size(prev_block)) | is_prev_alloc(prev_block); 
     block = prev_block; 
   }  
 
-  size_t *footer = GET_FOOTER(block);
+  size_t *footer = get_footer(block);
   *footer = block->size;
 
   /* set the prev flag in the next block */
-  block_t *new_next_block = GET_NEXT_BLOCK(block);
+  block_t *new_next_block = get_next_block(block);
   if ((void *)new_next_block < heap_end) {
-    SET_PREV_FREE(new_next_block);
+    set_prev_free(new_next_block);
   }
 
   /* push onto the free_list */
