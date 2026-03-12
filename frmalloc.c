@@ -37,14 +37,18 @@ typedef struct free_meta{
   block_t *prev; 
 } free_meta_t; 
 
-#define HEADER_SIZE sizeof(block_t) 
-#define MMAP_INIT_SIZE 4*1024*1024 // mmap 4 MB
-#define ALIGN(size) ((size + 15) & ~15) // align the size to a multiple of 16
-#define MIN_FREE_BLOCK_SIZE ALIGN(HEADER_SIZE + 2*sizeof(void *) + sizeof(size_t)) /* minimum size of a free block consists of:
-                                                                                      -header (16 bytes)
-                                                                                      -metadata (free_meta struct, 16 bytes) 
-                                                                                      -footer (holds size, 8 bytes)
-                                                                                         = 48 bytes (aligned) */    
+#define ALIGN_16(size) (((size) + 15) & ~15)
+
+/* constants */
+enum : size_t {
+  HEADER_SIZE = sizeof(block_t),
+  MMAP_INIT_SIZE = 4 * 1024 * 1024, // mmap 4 MB
+  MIN_FREE_BLOCK_SIZE = ALIGN_16(HEADER_SIZE + 2*sizeof(void *) + sizeof(size_t)) // minimum size of a free block consists of:
+};                                                                               // -header (16 bytes)
+                                                                                 // -metadata (free_meta struct, 16 bytes) 
+                                                                                 // -footer (holds size, 8 bytes)
+                                                                                 //   = 48 bytes (aligned) 
+
 static block_t *free_list = NULL;
 static void *heap_start;
 static void *heap_end;
@@ -201,7 +205,7 @@ void *frmalloc(size_t size) {
   
 /* if the aligned requested size is less than the minimum size of a free block 
  * than the size is equal to the minimum size of a free block */
-  size = ALIGN(size + HEADER_SIZE); 
+  size = ALIGN_16(size + HEADER_SIZE); 
   if (size < MIN_FREE_BLOCK_SIZE) {
     size = MIN_FREE_BLOCK_SIZE; 
   } 
